@@ -6,6 +6,7 @@ Created on Fri Apr 17 13:29:25 2026
 @author: Albin
 """
 import tkinter as tk
+from PIL import ImageGrab
 
 class Interactive1DPlot:
     def __init__(self, xmin=0, xmax=10, width=600, height=150):
@@ -44,6 +45,10 @@ class Interactive1DPlot:
         self.canvas.bind("<ButtonPress-1>", self.on_drag_start)
         self.canvas.bind("<B1-Motion>", self.on_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_drag_end)
+        
+        # Add a Download button
+        self.download_btn = tk.Button(self.root, text="Download Plot", command=self.save_png)
+        self.download_btn.pack(side="bottom", pady=5)
 
     # ---------------- PAN ----------------
     def on_pan_start(self, event):
@@ -158,12 +163,12 @@ class Interactive1DPlot:
         self.markers.append((value, color))
         pos = self.map_to_canvas(value) + self.axis_offset
         self.canvas.create_oval(pos-5, self.height//2-5, pos+5, self.height//2+5, fill=color)
-
+        
     def redraw(self):
         self.canvas.delete("all")
         self.draw_axis()
         self.draw_ticks()
-        for value, color in self.markers:
+        for value, color, label in self.markers:   # ✔ expects 3 values
             pos = self.map_to_canvas(value) + self.axis_offset
             self.canvas.create_oval(pos-5, self.height//2-5, pos+5, self.height//2+5, fill=color)
 
@@ -172,18 +177,28 @@ class Interactive1DPlot:
         self.width, self.height = event.width, event.height
         self.redraw()
 
-    def save_png(self, filename="plot.ps"):
-        self.canvas.postscript(file=filename)
+    # ---------------- Save ----------------
+    def save_png(self, filename="plot.png"):
+        # Grab the canvas region directly (no Ghostscript needed)
+        x = self.root.winfo_rootx() + self.canvas.winfo_x()
+        y = self.root.winfo_rooty() + self.canvas.winfo_y()
+        x1 = x + self.canvas.winfo_width()
+        y1 = y + self.canvas.winfo_height()
 
+        # Capture and save
+        ImageGrab.grab().crop((x, y, x1, y1)).save(filename)
+        print(f"Plot saved as {filename}")
+
+    # ---------------- Show ----------------
     def show(self):
         self.redraw()
         self.root.mainloop()
 
-
 # Example usage
-plot = Interactive1DPlot(0, 10)
-plot.major_step = 2
-plot.minor_count = 3
-plot.draw_marker(4.5)
-plot.draw_marker(7.2, color="blue")
-plot.show()
+if __name__ == "__main__":
+    plot = Interactive1DPlot(0, 10)
+    plot.major_step = 2
+    plot.minor_count = 3
+    plot.markers.append((4.5, "red", "Point A"))
+    plot.markers.append((7.2, "blue", "Point B"))
+    plot.show()
