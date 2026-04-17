@@ -49,6 +49,18 @@ class Interactive1DPlot:
         # Add a Download button
         self.download_btn = tk.Button(self.root, text="Download Plot", command=self.save_png)
         self.download_btn.pack(side="bottom", pady=5)
+        
+        self.legend_x = self.width - 160   # default top-right
+        self.legend_y = 10
+        self.legend_dragging = False
+        # Legend bindings (only inside legend tag)
+        self.canvas.tag_bind("legend", "<ButtonPress-1>", self.on_legend_press)
+        self.canvas.tag_bind("legend", "<B1-Motion>", self.on_legend_drag)
+        self.canvas.tag_bind("legend", "<ButtonRelease-1>", self.on_legend_release)
+        
+        # Zoom binding (global, only wheel)
+        self.canvas.bind("<MouseWheel>", self.on_zoom)
+
 
     # ---------------- PAN ----------------
     def on_pan_start(self, event):
@@ -171,11 +183,49 @@ class Interactive1DPlot:
         for value, color, label in self.markers:   # ✔ expects 3 values
             pos = self.map_to_canvas(value) + self.axis_offset
             self.canvas.create_oval(pos-5, self.height//2-5, pos+5, self.height//2+5, fill=color)
+        self.draw_legend()
 
     # ---------------- UTIL ----------------
     def on_resize(self, event):
         self.width, self.height = event.width, event.height
         self.redraw()
+
+    def draw_legend(self):
+        if not self.markers:
+            return
+    
+        box_width = 150
+        box_height = 20 + len(self.markers) * 15
+        x, y = self.legend_x, self.legend_y
+    
+        # Draw background rectangle with a tag
+        self.canvas.create_rectangle(
+            x, y, x + box_width, y + box_height,
+            outline="black", fill="white", tags="legend"
+        )
+    
+        # Draw entries
+        for i, (_, color, label) in enumerate(self.markers):
+            yy = y + 10 + i * 15
+            self.canvas.create_oval(x + 5, yy - 5, x + 15, yy + 5, fill=color, tags="legend")
+            self.canvas.create_text(x + 25, yy, text=label, anchor="w", tags="legend")
+
+    def on_legend_press(self, event):
+        # Start dragging
+        self.legend_dragging = True
+        self.drag_offset_x = event.x - self.legend_x
+        self.drag_offset_y = event.y - self.legend_y
+    
+    def on_legend_drag(self, event):
+        if self.legend_dragging:
+            # Update legend position
+            self.legend_x = event.x - self.drag_offset_x
+            self.legend_y = event.y - self.drag_offset_y
+            self.redraw()
+    
+    def on_legend_release(self, event):
+        self.legend_dragging = False
+
 
     # ---------------- Save ----------------
     def save_png(self, filename="plot.png"):
