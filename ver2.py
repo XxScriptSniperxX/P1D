@@ -6,11 +6,6 @@ Created on Wed Apr 22 12:14:05 2026
 
 @author: Albin
 """
-# -*- coding: utf-8 -*-
-"""
-Interactive 1D Plot with draggable legend (via L key) and zoom
-@author: Albin
-"""
 import tkinter as tk
 from PIL import ImageGrab
 
@@ -258,47 +253,63 @@ class Interactive1DPlot:
 class MultiPlotManager:
     def __init__(self, rows=2, cols=1, width=800, height=400):
         self.root = tk.Tk()
-        self.subplots = []
 
+        # ✅ dedicated frame for subplots
+        self.frame = tk.Frame(self.root)
+        self.frame.grid(row=0, column=0, sticky="nsew")
+
+        self.subplots = []
         sub_h = height // rows
         sub_w = width // cols
 
         for r in range(rows):
             for c in range(cols):
-                canvas = tk.Canvas(self.root, width=sub_w, height=sub_h, bg="white")
+                canvas = tk.Canvas(self.frame, width=sub_w, height=sub_h, bg="white")
                 canvas.grid(row=r, column=c, sticky="nsew")
                 plot = Interactive1DPlot(xmin=0, xmax=10,
                                          width=sub_w, height=sub_h,
                                          root=self.root, canvas=canvas)
                 self.subplots.append(plot)
 
-        # ✅ Manager-level download button
+        # ✅ Manager-level buttons
         self.download_btn = tk.Button(self.root, text="Download All Plots", command=self.save_all)
-        self.download_btn.grid(row=rows, column=0, columnspan=cols, pady=5)
+        self.download_btn.grid(row=1, column=0, pady=5)
+
+        self.snapshot_btn = tk.Button(self.root, text="Snapshot Subplots Only", command=self.save_frame)
+        self.snapshot_btn.grid(row=2, column=0, pady=5)
 
     def save_all(self):
         for i, plot in enumerate(self.subplots, start=1):
             plot.save_png(filename=f"plot_{i}.png")
         print("All plots saved.")
 
+    def save_frame(self, filename="subplots_snapshot.png"):
+        # get subplot frame coordinates
+        x = self.frame.winfo_rootx()
+        y = self.frame.winfo_rooty()
+        x1 = x + self.frame.winfo_width()
+        y1 = y + self.frame.winfo_height()
+        ImageGrab.grab().crop((x, y, x1, y1)).save(filename)
+        print(f"Subplots snapshot saved as {filename}")
+
     def show(self):
         for plot in self.subplots:
             plot.redraw()
         self.root.mainloop()
 
-
-
 # Example usage
 if __name__ == "__main__":
-    manager = MultiPlotManager(rows=2, cols=1, width=800, height=400)
+    manager = MultiPlotManager(rows=3, cols=1, width=800, height=400)
     
     sg1 = manager.subplots[0]
     sg2 = manager.subplots[1]
+    sg3 = manager.subplots[2]
     sg1.set_title("Signal Analysis - Run 1")
     sg2.set_title("Signal Analysis - Run 2")
     
     sg1.add_marker(2.5, "red", "First subplot marker")
     sg2.add_marker(7.2, "blue", "Second subplot marker")
+    sg3.add_marker(5.2, "blue", "Second subplot marker")
     
     manager.show()
 
